@@ -5,10 +5,7 @@ import java.math.RoundingMode;
 import java.net.URL;
 import java.net.URLConnection;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Scanner;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class Main {
     public static void main(String[] args) throws IOException {
@@ -40,40 +37,78 @@ public class Main {
         System.out.println();
 
         System.out.println("Loss or profit");
-        System.out.println(profitsOrLoss(amountInPln, "usd"));
-        System.out.println(profitsOrLoss(amountInPln, "eur"));
-        System.out.println(profitsOrLoss(amountInPln, "gbp"));
-        System.out.println(profitsOrLoss(amountInPln, "chf"));
+        System.out.println(profitsOrLoss(amountInPln, "usd", LocalDate.now().minusMonths(1)));
+        System.out.println(profitsOrLoss(amountInPln, "eur", LocalDate.now().minusMonths(1)));
+        System.out.println(profitsOrLoss(amountInPln, "gbp", LocalDate.now().minusMonths(1)));
+        System.out.println(profitsOrLoss(amountInPln, "chf", LocalDate.now().minusMonths(1)));
 
 
     }
 
-    private static BigDecimal currencyExchangeRate(String code) throws IOException {
+    /**
+     * Methods is downloading data from http and converting from json.
+     * The name of table and the currency code must be specified.
+     * @param code is currency
+     * @param table table's name
+     * @return Currency class from json
+     * @throws IOException
+     */
+
+    private static Currency getCurrencyFromTable(String code, String table) throws IOException {
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("http://api.nbp.pl/api/exchangerates/rates/a/")
+        stringBuilder.append("http://api.nbp.pl/api/exchangerates/rates/")
+                .append(table + "/")
                 .append(code);
 
         URL url = new URL(stringBuilder.toString());
         URLConnection request = url.openConnection();
         request.connect();
 
-        Scanner scanner = new Scanner(request.getInputStream());  //odczytuje ze strony JSONa
+        Scanner scanner = new Scanner(request.getInputStream());
         String json = scanner.nextLine();
         //System.out.println(json);
 
         Gson gson = new Gson();
-        Currency currency = gson.fromJson(json, Currency.class);
+        return gson.fromJson(json, Currency.class);
+    }
 
-        List<Rates> rates = currency.rates;
-        Rates mid = rates.get(0);
+    /**
+     *  Methods is downloading data from http depending on date and converting from json.
+     * @param code currency
+     * @param table table's name
+     * @param date
+     * @return Currency class from json
+     * @throws IOException
+     */
 
-        Pattern pattern = Pattern.compile("[0-9]+[.]+[0-9]+");
-        Matcher matcher = pattern.matcher(mid.toString());
-        matcher.find();
-        String valueString = matcher.group();
-        BigDecimal valueBigDecimal = new BigDecimal(valueString);
+    private static Currency getCurrencyFromTableWithDate (String code, String table, LocalDate date) throws IOException {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("http://api.nbp.pl/api/exchangerates/rates/")
+                .append(table + "/")
+                .append(code +"/")
+                .append("/"+ date + "/");
+
+        URL url = new URL(stringBuilder.toString());
+        URLConnection request = url.openConnection();
+        request.connect();
+
+        Scanner scanner = new Scanner(request.getInputStream());
+        String json = scanner.nextLine();
+        //System.out.println(json);
+
+        Gson gson = new Gson();
+        return gson.fromJson(json, Currency.class);
+    }
+
+
+    private static BigDecimal currencyExchangeRate(String code) throws IOException {
+        Currency currency = getCurrencyFromTable(code, "a");
+
+        Double currencyValue = Double.parseDouble(currency.getRates().get(0).getMid());
+        BigDecimal valueBigDecimal = new BigDecimal(currencyValue).setScale(4, RoundingMode.HALF_EVEN);
         return valueBigDecimal ;
     }
+
 
     private static BigDecimal amountInAnotherCurrency(BigDecimal amount, String code, String method) throws IOException {
         BigDecimal amountInAnotherCurrency = BigDecimal.valueOf(1);
@@ -88,109 +123,46 @@ public class Main {
 
     //ASK NOW
     private static BigDecimal currencySellingRate(String code) throws IOException {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("http://api.nbp.pl/api/exchangerates/rates/c/")
-                .append(code);
-
-        URL url = new URL(stringBuilder.toString());
-        URLConnection request = url.openConnection();
-        request.connect();
-
-        Scanner scanner = new Scanner(request.getInputStream());  //odczytuje ze strony JSONa
-        String json = scanner.nextLine();
-        //System.out.println(json);
-
-        Gson gson = new Gson();
-        Currency currency = gson.fromJson(json, Currency.class);
-
-        List<Rates> rates = currency.rates;
-        Rates ask = rates.get(0);
-        Pattern pattern = Pattern.compile("[0-9]+[.]+[0-9]+");
-        Matcher matcher = pattern.matcher(ask.toString());
-        matcher.find();
-        String valueString = matcher.group();
-        BigDecimal valueBigDecimal = new BigDecimal(valueString);
+        Currency currency = getCurrencyFromTable(code, "c");
+        Double currencyValue = Double.parseDouble(currency.getRates().get(0).getAsk());
+        BigDecimal valueBigDecimal = new BigDecimal(currencyValue).setScale(4, RoundingMode.HALF_EVEN);
 
         return valueBigDecimal;
     }
 
+
     //ASK One MONTH AGO
-    private static BigDecimal currencySellingRateOneMonthAgo (String code) throws IOException {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("http://api.nbp.pl/api/exchangerates/rates/c/")
-                .append(code)
-                .append("/"+ LocalDate.now().minusMonths(1)+"/");
-        URL url = new URL(stringBuilder.toString());
-        URLConnection request = url.openConnection();
-        request.connect();
-
-        Scanner scanner = new Scanner(request.getInputStream());  //odczytuje ze strony JSONa
-        String json = scanner.nextLine();
-        //System.out.println(json);
-
-        Gson gson = new Gson();
-        Currency currency = gson.fromJson(json, Currency.class);
-
-        List<Rates> rates = currency.rates;
-
-//        int lastComma = rates.get(0).toString().lastIndexOf(",");
-//        String string = rates.get(0).toString().substring(lastComma);
-        //System.out.println(string);
-
-        Pattern pattern = Pattern.compile("[0-9]+[.]+[0-9]+");
-        Matcher matcher = pattern.matcher(rates.get(0).toString());
-        matcher.find();
-        String valueString = matcher.group();
-        BigDecimal valueBigDecimal = new BigDecimal(valueString);
+    private static BigDecimal currencySellingRateBasedOnDate (String code, String table, LocalDate date) throws IOException {
+        Currency currency= getCurrencyFromTableWithDate(code, table, date);
+        Double currencyValue = Double.parseDouble(currency.getRates().get(0).getAsk());
+        BigDecimal valueBigDecimal = new BigDecimal(currencyValue).setScale(4, RoundingMode.HALF_EVEN);
 
         return valueBigDecimal;
     }
 
     //BID NOW
     private static BigDecimal currencyBuyinRate (String code) throws IOException {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("http://api.nbp.pl/api/exchangerates/rates/c/")
-                .append(code);
-        URL url = new URL(stringBuilder.toString());
-        URLConnection request = url.openConnection();
-        request.connect();
-
-        Scanner scanner = new Scanner(request.getInputStream());  //odczytuje ze strony JSONa
-        String json = scanner.nextLine();
-        //System.out.println(json);
-
-        Gson gson = new Gson();
-        Currency currency = gson.fromJson(json, Currency.class);
-
-        List<Rates> rates = currency.rates;
-
-        int lastComma = rates.get(0).toString().lastIndexOf(",");
-        String string = rates.get(0).toString().substring(lastComma);
-        //System.out.println(string);
-
-        Pattern pattern = Pattern.compile("[0-9]+[.]+[0-9]+");
-        Matcher matcher = pattern.matcher(string);
-        matcher.find();
-        String valueString = matcher.group();
-        BigDecimal valueBigDecimal = new BigDecimal(valueString);
+        Currency currency = getCurrencyFromTable(code, "c");
+        Double currencyValue = Double.parseDouble(currency.getRates().get(0).getBid());
+        BigDecimal valueBigDecimal = new BigDecimal(currencyValue).setScale(4, RoundingMode.HALF_EVEN);
 
         return valueBigDecimal;
     }
 
-    private static BigDecimal amountInAnotherCurrencyOneMonthAgo (BigDecimal amount, String code) throws IOException {
-        return amount.divide(currencySellingRateOneMonthAgo(code), 2, RoundingMode.HALF_EVEN);
+    private static BigDecimal amountInAnotherBasedOnDate (BigDecimal amount, String code, LocalDate date) throws IOException {
+        return amount.divide(currencySellingRateBasedOnDate(code, "c", date), 2, RoundingMode.HALF_EVEN);
     }
 
-    private static BigDecimal differenceInAmounts (BigDecimal amount, String code) throws IOException {
-        return amount.subtract(amountInAnotherCurrencyOneMonthAgo(amount, code).multiply(currencyBuyinRate(code)));
+    private static BigDecimal differenceInAmounts (BigDecimal amount, String code, LocalDate date) throws IOException {
+        return amount.subtract(amountInAnotherBasedOnDate( amount, code, date).multiply(currencyBuyinRate(code)));
     }
 
-    private static String profitsOrLoss (BigDecimal amount, String code) throws IOException {
+    private static String profitsOrLoss (BigDecimal amount, String code, LocalDate date) throws IOException {
         String message = null;
-        if (differenceInAmounts(amount,code).compareTo(BigDecimal.ZERO) < 0) {
+        if (differenceInAmounts(amount,code, date).compareTo(BigDecimal.ZERO) < 0) {
             message = "Profit";
         }
-        else if (differenceInAmounts(amount,code).compareTo(BigDecimal.ZERO) ==0) {
+        else if (differenceInAmounts(amount,code, date).compareTo(BigDecimal.ZERO) ==0) {
             message = "No loss, no profit";
         }
         else {

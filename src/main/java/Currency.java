@@ -7,12 +7,27 @@ String mid;
 String code;
 String currency;
 String effectiveDate;
-List<Rates> rates = new ArrayList<Rates>();
+List<Rates> rates;
 
+    public String getMid() {
+        return mid;
+    }
 
+    public String getCode() {
+        return code;
+    }
 
+    public String getCurrency() {
+        return currency;
+    }
 
+    public String getEffectiveDate() {
+        return effectiveDate;
+    }
 
+    public List<Rates> getRates() {
+        return rates;
+    }
 
 //String table; //typ tabeli
 //String no; // numer tabeli

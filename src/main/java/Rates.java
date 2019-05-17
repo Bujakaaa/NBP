@@ -2,9 +2,21 @@ import java.math.BigDecimal;
 
 public class Rates {
 
-    BigDecimal mid;
-    BigDecimal ask;
-    BigDecimal bid;
+    String mid;
+    String ask;
+    String bid;
+
+    public String getMid() {
+        return mid;
+    }
+
+    public String getAsk() {
+        return ask;
+    }
+
+    public String getBid() {
+        return bid;
+    }
 
     @Override
     public String toString() {
